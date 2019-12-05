@@ -1,0 +1,24 @@
+{
+  "name": "webgpu-blas",
+  "version": "1.0.0",
+  "description": "Matrix operation on WebGPU",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github:milhidaka/webgpu-blas.git"
+  },
+  "author": "Masatoshi Hidaka",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^3.7.3"
+  }
+}
