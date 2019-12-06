@@ -9,8 +9,16 @@ On iPhone11, matrix multiplication of two 1024x1024 matrices can be computed in 
 
 To run WebGPU, experimental feature WebGPU have to be enabled in Safari.
 
+In macOS, menu bar -> Develop -> Experimental Features -> check "WebGPU"
+
 In iOS 13, open Settings -> Safari -> Advanced -> Experimental Features -> Toggle "WebGPU"
 
+<p float="left">
+<img src="docs/images/ios-safari-webgpu-1.png" title="iOS13 enable WebGPU Step1" width="200px">
+<img src="docs/images/ios-safari-webgpu-2.png" title="iOS13 enable WebGPU Step2" width="200px">
+<img src="docs/images/ios-safari-webgpu-3.png" title="iOS13 enable WebGPU Step3" width="200px">
+<img src="docs/images/ios-safari-webgpu-4.png" title="iOS13 enable WebGPU Step4" width="200px">
+</p>
 
 # Usage
 
