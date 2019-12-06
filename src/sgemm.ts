@@ -29,8 +29,13 @@ interface WebGPURunnerBufferInfo {
   output: boolean;
 }
 
+interface WebGPURunnerPipeline {
+  bindGroupLayout: any;
+  pipeline: any;
+}
+
 interface WebGPURunnerRequest {
-  shader: string;
+  pipeline: WebGPURunnerPipeline;
   buffers: WebGPURunnerBufferInfo[];
   inputData: { [name: string]: Float32Array };
   threadGroups: { [key in ThreadGroupDim]: number };
@@ -43,7 +48,9 @@ interface WebGPURunnerResult {
 class WebGPURunner {
   private _initialized = false;
   private _device: any;
+  pipelineCache: Map<string, WebGPURunnerPipeline>;
   constructor() {
+    this.pipelineCache = new Map();
   }
 
   async init() {
@@ -54,6 +61,34 @@ class WebGPURunner {
     const adapter = await navigator.gpu.requestAdapter();
     this._device = await adapter.requestDevice();
     this._initialized = true;
+  }
+
+  createPipeline(shader: string, nBuffers: number): WebGPURunnerPipeline {
+    const device = this._device;
+    const bindings = [];
+    for (let i = 0; i < nBuffers; i++) {
+      bindings.push({
+        binding: i,
+        visibility: GPUShaderStage.COMPUTE,
+        type: "storage-buffer"
+      });
+    }
+    const bindGroupLayout = device.createBindGroupLayout({
+      bindings
+    });
+
+    const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
+
+    const shaderModule = device.createShaderModule({ code: shader, isWHLSL: true });
+    const pipeline = device.createComputePipeline({
+      layout: pipelineLayout,
+      computeStage: {
+        module: shaderModule,
+        entryPoint: "main"
+      }
+    });
+
+    return { bindGroupLayout, pipeline };
   }
 
   async run(request: WebGPURunnerRequest): Promise<WebGPURunnerResult> {
@@ -75,18 +110,8 @@ class WebGPURunner {
         usage
       });
     });
-
-    const bindGroupLayout = device.createBindGroupLayout({
-      bindings: request.buffers.map((bparam, i) => ({
-        binding: i,
-        visibility: GPUShaderStage.COMPUTE,
-        type: "storage-buffer"
-      }))
-    });
-
-
     const bindGroup = device.createBindGroup({
-      layout: bindGroupLayout,
+      layout: request.pipeline.bindGroupLayout,
       bindings: request.buffers.map((bparam, i) => ({
         binding: i,
         resource: {
@@ -96,17 +121,6 @@ class WebGPURunner {
       }))
     });
 
-    const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
-
-    const shaderModule = device.createShaderModule({ code: request.shader, isWHLSL: true });
-
-    const pipeline = device.createComputePipeline({
-      layout: pipelineLayout,
-      computeStage: {
-        module: shaderModule,
-        entryPoint: "main"
-      }
-    });
     for (let i = 0; i < request.buffers.length; i++) {
       const bparam = request.buffers[i];
 
@@ -131,7 +145,7 @@ class WebGPURunner {
     const commandEncoder = device.createCommandEncoder();
     const passEncoder = commandEncoder.beginComputePass();
     passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.setPipeline(pipeline);
+    passEncoder.setPipeline(request.pipeline.pipeline);
     passEncoder.dispatch(
       request.threadGroups.x,
       request.threadGroups.y,
@@ -250,8 +264,15 @@ compute void main(constant float4[] array_a : register(u0),
 }
 `;
 
+  const cache_key = 'sgemm_block';
+  let pipeline = runner.pipelineCache.get(cache_key);
+  if (!pipeline) {
+    pipeline = runner.createPipeline(shader, 4);
+    runner.pipelineCache.set(cache_key, pipeline);
+  }
+
   const request: WebGPURunnerRequest = {
-    shader,
+    pipeline,
     buffers: [
       { index: 0, name: 'array_a', length: m * k, input: true, output: false },
       { index: 1, name: 'array_b', length: k * n, input: true, output: false },
@@ -290,8 +311,15 @@ compute void main(constant float[] array_a : register(u0),
 }
 `;
 
+  const cache_key = 'sgemm_simple';
+  let pipeline = runner.pipelineCache.get(cache_key);
+  if (!pipeline) {
+    pipeline = runner.createPipeline(shader, 4);
+    runner.pipelineCache.set(cache_key, pipeline);
+  }
+
   const request: WebGPURunnerRequest = {
-    shader,
+    pipeline,
     buffers: [
       { index: 0, name: 'array_a', length: m * k, input: true, output: false },
       { index: 1, name: 'array_b', length: k * n, input: true, output: false },
