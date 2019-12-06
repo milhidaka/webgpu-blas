@@ -57,7 +57,6 @@ class WebGPURunner {
   }
 
   async run(request: WebGPURunnerRequest): Promise<WebGPURunnerResult> {
-
     const device = this._device;
     const buffers = request.buffers.map((bparam, i) => {
       if (i !== bparam.index) {
@@ -129,7 +128,6 @@ class WebGPURunner {
       }
     }
 
-    const timeReadStart = Date.now();
     const commandEncoder = device.createCommandEncoder();
     const passEncoder = commandEncoder.beginComputePass();
     passEncoder.setBindGroup(0, bindGroup);
@@ -172,25 +170,7 @@ class WebGPURunner {
 
 const runner = new WebGPURunner();
 
-export async function sgemm(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array, beta: number = 0.0, c?: Float32Array): Promise<Float32Array> {
-  if (alpha !== 1.0) {
-    throw new Error('alpha !== 1.0 is not yet supported');
-  }
-  if (beta !== 0.0) {
-    throw new Error('beta !== 0.0 is not yet supported');
-  }
-  if (m % 64 !== 0) {
-    throw new Error('m must be multiple of 64.');
-  }
-  if (n % 32 !== 0) {
-    throw new Error('n must be multiple of 32.');
-  }
-  if (k % 4 !== 0) {
-    throw new Error('n must be multiple of 4.');
-  }
-
-  await runner.init();
-
+async function sgemm_block(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array): Promise<Float32Array> {
   const shader = `
 [numthreads(8, 8, 1)]
 compute void main(constant float4[] array_a : register(u0),
@@ -199,10 +179,9 @@ compute void main(constant float4[] array_a : register(u0),
                   constant float[] meta : register(u3),
                   float3 dispatchThreadID : SV_DispatchThreadID)
 {
-  // threadgroups x: M / numthread.x / 8, y: N / numthread.y / 4
+  // threadgroups x: N / numthread.x / 8, y: M / numthread.y / 4
   uint M = uint(meta[0]), N = uint(meta[1]), K = uint(meta[2]);
   uint MD4 = uint(meta[3]), ND4 = uint(meta[4]), KD4 = uint(meta[5]);
-  //uint M = 64, N = 64, K = 64, MD4 = 16, ND4 = 16, KD4 = 16;
   uint x = uint(dispatchThreadID.x);
   uint y = uint(dispatchThreadID.y);
   float4 sum0 = float4(0.0,0.0,0.0,0.0);
@@ -280,9 +259,66 @@ compute void main(constant float4[] array_a : register(u0),
       { index: 3, name: 'meta', length: 6, input: true, output: false },
     ],
     inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4]) },
-    threadGroups: { x: m / 64, y: n / 32, z: 1 }
+    threadGroups: { x: n / 64, y: m / 32, z: 1 }
   };
 
   const result = await runner.run(request);
   return result.outputData.array_c;
+}
+
+async function sgemm_simple(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array): Promise<Float32Array> {
+  const shader = `
+[numthreads(8, 8, 1)]
+compute void main(constant float[] array_a : register(u0),
+                  constant float[] array_b : register(u1),
+                  device float[] array_c : register(u2),
+                  constant float[] meta : register(u3),
+                  float3 dispatchThreadID : SV_DispatchThreadID)
+{
+  // threadgroups x: M / numthread.x, y: N / numthread.y
+  uint M = uint(meta[0]), N = uint(meta[1]), K = uint(meta[2]);
+  uint x = uint(dispatchThreadID.x);
+  uint y = uint(dispatchThreadID.y);
+  if (x >= N || y >= M) {
+    return;
+  }
+  float sum = 0.0;
+  for(uint k=0;k<K;k++) {
+    sum += array_a[y * K + k] * array_b[k * N + x];
+  }
+    array_c[x + y * N] = sum;
+}
+`;
+
+  const request: WebGPURunnerRequest = {
+    shader,
+    buffers: [
+      { index: 0, name: 'array_a', length: m * k, input: true, output: false },
+      { index: 1, name: 'array_b', length: k * n, input: true, output: false },
+      { index: 2, name: 'array_c', length: m * n, input: false, output: true },
+      { index: 3, name: 'meta', length: 3, input: true, output: false },
+    ],
+    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k]) },
+    threadGroups: { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 }
+  };
+
+  const result = await runner.run(request);
+  return result.outputData.array_c;
+}
+
+export async function sgemm(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array, beta: number = 0.0, c?: Float32Array): Promise<Float32Array> {
+  if (alpha !== 1.0) {
+    throw new Error('alpha !== 1.0 is not yet supported');
+  }
+  if (beta !== 0.0) {
+    throw new Error('beta !== 0.0 is not yet supported');
+  }
+
+  await runner.init();
+
+  if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0) {
+    return sgemm_block(m, n, k, alpha, a, b);
+  } else {
+    return sgemm_simple(m, n, k, alpha, a, b);
+  }
 }
