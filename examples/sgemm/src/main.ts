@@ -1,5 +1,9 @@
 import { sgemm } from "webgpu-blas";
 
+function message(m: string): void {
+  document.getElementById('message').innerText += m + '\n';
+}
+
 function makeRandom(length: number): Float32Array {
   const array = new Float32Array(length);
   for (let i = 0; i < length; i++) {
@@ -45,12 +49,17 @@ async function compute() {
     const array_a = makeRandom(m * k);
     const array_b = makeRandom(k * n);
     console.time('sgemm');
+    const sgemmStartTime = performance.now();//[ms]
     const result = await sgemm(m, n, k, alpha, array_a, array_b);
+    const sgemmEndTime = performance.now();
     console.timeEnd('sgemm');
+    const flops = m * n * k * 2 * 1000 / (sgemmEndTime - sgemmStartTime) / 1000000000;
+    message(`Sgemm of (${m}x${k}),(${k}x${n}): ${sgemmEndTime - sgemmStartTime} ms, ${flops.toFixed(2)} GFLOPS`);
     console.log('result', result);
     if ((document.getElementById('enable_validate') as HTMLInputElement).checked) {
       const validation_result = checkResult(m, n, k, alpha, array_a, array_b, result);
       console.log('validation result', validation_result);
+      message(`Validation ${validation_result}`);
     }
   } catch (ex) {
     alert(ex.message);
