@@ -1,13 +1,17 @@
+let polyfillgpu_called = false;
 
 function polyfillgpu() {
+  if (polyfillgpu_called) {
+    return;
+  }
+  polyfillgpu_called = true;
   if (!navigator.gpu) {
-    alert('navigator.gpu not found');
-    throw new Error('navigator.gpu not found');
+    console.error('navigator.gpu not found');
+    return;
   }
 
   if (!GPUBufferUsage) {
-    alert('GPUBufferUsage not found');
-    throw new Error('GPUBufferUsage not found');
+    console.error('GPUBufferUsage not found');
   }
 
   // Safari 13.0.3 -> Safari TP>92
@@ -48,9 +52,11 @@ interface WebGPURunnerResult {
 class WebGPURunner {
   private _initialized = false;
   private _device: any;
+  isSupportedDevice: boolean;
   pipelineCache: Map<string, WebGPURunnerPipeline>;
   constructor() {
     this.pipelineCache = new Map();
+    this.isSupportedDevice = false;
   }
 
   async init() {
@@ -58,8 +64,13 @@ class WebGPURunner {
       return;
     }
     polyfillgpu();
-    const adapter = await navigator.gpu.requestAdapter();
-    this._device = await adapter.requestDevice();
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      this._device = await adapter.requestDevice();
+      this.isSupportedDevice = true;
+    } catch (ex) {
+      console.error('Unsupported device: ', ex.message);
+    }
     this._initialized = true;
   }
 
@@ -335,12 +346,32 @@ compute void main(constant float[] array_a : register(u0),
   return result.outputData.array_c;
 }
 
+
+function sgemm_fallback(m: number, n: number, k: number, alpha: number, array_a: Float32Array, array_b: Float32Array): Float32Array {
+  // To improve performance on WebGPU unsupported devices, use WebGL or WebAssembly
+  const result = new Float32Array(m * n);
+  for (let row = 0; row < m; row++) {
+    for (let col = 0; col < n; col++) {
+      let sum = 0.0;
+      for (let j = 0; j < k; j++) {
+        sum += array_a[row * k + j] * array_b[j * n + col];
+      }
+      result[row * n + col] = sum * alpha;
+    }
+  }
+  return result;
+}
+
 export async function sgemm(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array, beta: number = 0.0, c?: Float32Array): Promise<Float32Array> {
   if (beta !== 0.0) {
     throw new Error('beta !== 0.0 is not yet supported');
   }
 
   await runner.init();
+  if (!runner.isSupportedDevice) {
+    // do fallback
+    return sgemm_fallback(n, n, k, alpha, a, b);
+  }
 
   if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0 && alpha === 1.0) {
     return sgemm_block(m, n, k, alpha, a, b);
