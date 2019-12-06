@@ -287,7 +287,7 @@ compute void main(constant float4[] array_a : register(u0),
   return result.outputData.array_c;
 }
 
-async function sgemm_simple(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array): Promise<Float32Array> {
+async function sgemm_generic(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array): Promise<Float32Array> {
   const shader = `
 [numthreads(8, 8, 1)]
 compute void main(constant float[] array_a : register(u0),
@@ -307,11 +307,12 @@ compute void main(constant float[] array_a : register(u0),
   for(uint k=0;k<K;k++) {
     sum += array_a[y * K + k] * array_b[k * N + x];
   }
-    array_c[x + y * N] = sum;
+  float alpha = meta[3];
+    array_c[x + y * N] = sum * alpha;
 }
 `;
 
-  const cache_key = 'sgemm_simple';
+  const cache_key = 'sgemm_generic';
   let pipeline = runner.pipelineCache.get(cache_key);
   if (!pipeline) {
     pipeline = runner.createPipeline(shader, 4);
@@ -324,9 +325,9 @@ compute void main(constant float[] array_a : register(u0),
       { index: 0, name: 'array_a', length: m * k, input: true, output: false },
       { index: 1, name: 'array_b', length: k * n, input: true, output: false },
       { index: 2, name: 'array_c', length: m * n, input: false, output: true },
-      { index: 3, name: 'meta', length: 3, input: true, output: false },
+      { index: 3, name: 'meta', length: 4, input: true, output: false },
     ],
-    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k]) },
+    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, alpha]) },
     threadGroups: { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 }
   };
 
@@ -335,18 +336,15 @@ compute void main(constant float[] array_a : register(u0),
 }
 
 export async function sgemm(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array, beta: number = 0.0, c?: Float32Array): Promise<Float32Array> {
-  if (alpha !== 1.0) {
-    throw new Error('alpha !== 1.0 is not yet supported');
-  }
   if (beta !== 0.0) {
     throw new Error('beta !== 0.0 is not yet supported');
   }
 
   await runner.init();
 
-  if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0) {
+  if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0 && alpha === 1.0) {
     return sgemm_block(m, n, k, alpha, a, b);
   } else {
-    return sgemm_simple(m, n, k, alpha, a, b);
+    return sgemm_generic(m, n, k, alpha, a, b);
   }
 }

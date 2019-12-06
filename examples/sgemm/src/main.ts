@@ -9,7 +9,7 @@ function makeRandom(length: number): Float32Array {
   return array;
 }
 
-function checkResult(m: number, n: number, k: number, array_a: Float32Array, array_b: Float32Array, actual: Float32Array): boolean {
+function checkResult(m: number, n: number, k: number, alpha: number, array_a: Float32Array, array_b: Float32Array, actual: Float32Array): boolean {
   const expected = new Float32Array(m * n);
   for (let row = 0; row < m; row++) {
     for (let col = 0; col < n; col++) {
@@ -17,7 +17,7 @@ function checkResult(m: number, n: number, k: number, array_a: Float32Array, arr
       for (let j = 0; j < k; j++) {
         sum += array_a[row * k + j] * array_b[j * n + col];
       }
-      expected[row * n + col] = sum;
+      expected[row * n + col] = sum * alpha;
     }
   }
   for (let row = 0; row < m; row++) {
@@ -36,19 +36,20 @@ function checkResult(m: number, n: number, k: number, array_a: Float32Array, arr
 
 async function compute() {
   try {
-    const [m, n, k] = [
+    const [m, n, k, alpha] = [
       Number((document.getElementById('size_m') as HTMLInputElement).value),
       Number((document.getElementById('size_n') as HTMLInputElement).value),
-      Number((document.getElementById('size_k') as HTMLInputElement).value)
+      Number((document.getElementById('size_k') as HTMLInputElement).value),
+      Number((document.getElementById('arg_alpha') as HTMLInputElement).value)
     ];
     const array_a = makeRandom(m * k);
     const array_b = makeRandom(k * n);
     console.time('sgemm');
-    const result = await sgemm(m, n, k, 1.0, array_a, array_b);
+    const result = await sgemm(m, n, k, alpha, array_a, array_b);
     console.timeEnd('sgemm');
     console.log('result', result);
     if ((document.getElementById('enable_validate') as HTMLInputElement).checked) {
-      const validation_result = checkResult(m, n, k, array_a, array_b, result);
+      const validation_result = checkResult(m, n, k, alpha, array_a, array_b, result);
       console.log('validation result', validation_result);
     }
   } catch (ex) {
