@@ -8,7 +8,10 @@ The WebGPU standard is still in the process of being established and will not wo
 
 - [Chrome Canary](https://www.google.com/chrome/canary/) (89.0.4359.0) on Windows, MacOS (maybe Linux)
   - Enabling WebGPU feature flag (from chrome://flags/#enable-unsafe-webgpu ) is needed.
-- Safari on macOS Catalina, iOS 13, iOS 14
+
+![Chrome Canary WebGPU](docs/images/chrome-canary-webgpu.png)
+
+- Safari 14 on macOS Catalina, iOS 13, iOS 14
   - See below to enable the experimental feature
   - Using WSL shading language, which is deprecated and will be removed in future release of Safari.
 
