@@ -144,7 +144,6 @@ class WebGPURunner {
         }
         buffer_mapped_array.set(input_array);
         buffer.unmap();
-
       }
     }
 
@@ -199,7 +198,6 @@ async function sgemm_block(m: number, n: number, k: number, alpha: number, a: Fl
     pipeline = runner.createPipeline(shader, 4);
     runner.pipelineCache.set(cache_key, pipeline);
   }
-  console.log('SGEMM-BLOCK');
 
   const request: WebGPURunnerRequest = {
     pipeline,
@@ -256,7 +254,7 @@ export async function sgemm(m: number, n: number, k: number, alpha: number, a: F
     throw new Error('unsupported device');
   }
 
-  if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0 && alpha === 1.0) {
+  if (m % 32 === 0 && n % 64 === 0 && k % 4 === 0 && alpha === 1.0) {
     return sgemm_block(m, n, k, alpha, a, b);
   } else {
     return sgemm_generic(m, n, k, alpha, a, b);

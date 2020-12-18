@@ -55,7 +55,6 @@ interface WebGPURunnerResult {
 class WebGPURunner {
   private _initialized = false;
   private _device: any;
-  private _glslang!: any;
   isSupportedDevice: boolean;
   pipelineCache: Map<string, WebGPURunnerPipeline>;
   constructor() {
@@ -345,8 +344,7 @@ compute void main(constant float[] array_a : register(u0),
       { index: 3, name: 'meta', length: 4, input: true, output: false },
     ],
     inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, alpha]) },
-    //threadGroups: isSafari ? { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 } : { x: n, y: m, z: 1 }
-    threadGroups: { x: n, y: m, z: 1 }
+    threadGroups: { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 }
   };
 
   const result = await runner.run(request);
@@ -364,7 +362,7 @@ export async function sgemm(m: number, n: number, k: number, alpha: number, a: F
     throw new Error('unsupported device');
   }
 
-  if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0 && alpha === 1.0) {
+  if (m % 32 === 0 && n % 64 === 0 && k % 4 === 0 && alpha === 1.0) {
     return sgemm_block(m, n, k, alpha, a, b);
   } else {
     return sgemm_generic(m, n, k, alpha, a, b);

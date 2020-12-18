@@ -1,13 +1,16 @@
-# webgpu-blas
+# WebGPU-BLAS
 
 Fast matrix-matrix multiplication on web browser using [WebGPU](https://gpuweb.github.io/gpuweb/), future web standard.
 
-Currently supports Safari on macOS Catalina and iOS 13.
-Chrome support is future work.
+The WebGPU standard is still in the process of being established and will not work in normal web browsers. There is also a possibility that the code will not work due to changes in the standard.
 
-On iPhone11, matrix multiplication of two 1024x1024 matrices can be computed in about 60ms (35GFLOPS), including data transfer from / to CPU.
+# Supported web browsers
 
-To run WebGPU, experimental feature WebGPU have to be enabled in Safari.
+- [Chrome Canary](https://www.google.com/chrome/canary/) (89.0.4359.0) on Windows, MacOS (maybe Linux)
+  - Enabling WebGPU feature flag (from chrome://flags/#enable-unsafe-webgpu ) is needed.
+- Safari on macOS Catalina, iOS 13, iOS 14
+  - See below to enable the experimental feature
+  - Using WSL shading language, which is deprecated and will be removed in future release of Safari.
 
 In macOS, menu bar -> Develop -> Experimental Features -> check "WebGPU"
 
@@ -44,12 +47,10 @@ console.log(result); // m*n row-major matrix (Float32Array)
 # Limitation
 ## sgemm
 - Input matrix "C" of ordinary blas is not yet supported.
-- To use efficient implementation, the condition `m % 64 === 0 && n % 32 === 0 && k % 4 === 0 && alpha === 1.0` have to met.
+- To use efficient implementation, the condition `m % 32 === 0 && n % 64 === 0 && k % 4 === 0 && alpha === 1.0` have to met.
 - When the device / browser does not support WebGPU, fallback pure JavaScript implementation is used.
 
 # Development
-
-Test is not yet implemented.
 
 ## Setup
 ```
@@ -67,3 +68,11 @@ For webpack single js
 ```
 yarn webpack
 ```
+
+## Shader compile
+
+For shader for Chrome, SPIR-V binary format is needed.
+
+SPRI-V can be compiled from text-based GLSL shader. To compile, use helper interface in `compile` directory.
+
+GLSL shader is stored in `shader` directory. For example, `shader/sgemm_block.glsl` is compiled and stored in `src/shader_sgemm_block.ts`.
