@@ -410,7 +410,8 @@ compute void main(constant float[] array_a : register(u0),
       { index: 3, name: 'meta', length: 4, input: true, output: false },
     ],
     inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, alpha]) },
-    threadGroups: isSafari ? { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 } : { x: n, y: m, z: 1 }
+    //threadGroups: isSafari ? { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 } : { x: n, y: m, z: 1 }
+    threadGroups: { x: n, y: m, z: 1 }
   };
 
   const result = await runner.run(request);
