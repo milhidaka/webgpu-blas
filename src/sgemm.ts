@@ -1,4 +1,7 @@
+import { Shader as ShaderSgemmGeneric } from "./shader_sgemm_generic";
+
 let polyfillgpu_called = false;
+let isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 
 function polyfillgpu() {
   if (polyfillgpu_called) {
@@ -15,10 +18,12 @@ function polyfillgpu() {
   }
 
   // Safari 13.0.3 -> Safari TP>92
-  if (GPUBufferUsage.COPY_SRC === undefined) {
-    GPUBufferUsage.COPY_DST = GPUBufferUsage.TRANSFER_DST;
-    GPUBufferUsage.COPY_SRC = GPUBufferUsage.TRANSFER_SRC;
-    window.GPUShaderStage = GPUShaderStageBit;
+  if (isSafari) {
+    if (GPUBufferUsage.COPY_SRC === undefined) {
+      GPUBufferUsage.COPY_DST = GPUBufferUsage.TRANSFER_DST;
+      GPUBufferUsage.COPY_SRC = GPUBufferUsage.TRANSFER_SRC;
+      window.GPUShaderStage = GPUShaderStageBit;
+    }
   }
 
 }
@@ -52,6 +57,7 @@ interface WebGPURunnerResult {
 class WebGPURunner {
   private _initialized = false;
   private _device: any;
+  private _glslang!: any;
   isSupportedDevice: boolean;
   pipelineCache: Map<string, WebGPURunnerPipeline>;
   constructor() {
@@ -74,7 +80,7 @@ class WebGPURunner {
     this._initialized = true;
   }
 
-  createPipeline(shader: string, nBuffers: number): WebGPURunnerPipeline {
+  createPipeline(shader: string | Uint32Array, nBuffers: number): WebGPURunnerPipeline {
     const device = this._device;
     const bindings = [];
     for (let i = 0; i < nBuffers; i++) {
@@ -84,13 +90,17 @@ class WebGPURunner {
         type: "storage-buffer"
       });
     }
-    const bindGroupLayout = device.createBindGroupLayout({
+    console.log('isSafari', isSafari);
+    const bindGroupLayout = isSafari ? device.createBindGroupLayout({
       bindings
+    }) : device.createBindGroupLayout({
+      entries: bindings
     });
 
     const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
 
-    const shaderModule = device.createShaderModule({ code: shader, isWHLSL: true });
+    const shaderModule = isSafari ? device.createShaderModule({ code: shader, isWHLSL: true }) :
+      device.createShaderModule({ code: shader });
     const pipeline = device.createComputePipeline({
       layout: pipelineLayout,
       computeStage: {
@@ -104,26 +114,48 @@ class WebGPURunner {
 
   async run(request: WebGPURunnerRequest): Promise<WebGPURunnerResult> {
     const device = this._device;
+    let chromeOutputCopyInfo: { src: any, dst: any, size: number, name: string }[] = [];
     const buffers = request.buffers.map((bparam, i) => {
       if (i !== bparam.index) {
         throw new Error('request.buffers is not sorted in order of index');
       }
       let usage = GPUBufferUsage.STORAGE;
-      if (bparam.input) {
+      if (isSafari && bparam.input) {
         usage |= GPUBufferUsage.MAP_WRITE;
       }
-      if (bparam.output) {
+      if (isSafari && bparam.output) {
         usage |= GPUBufferUsage.MAP_READ;
       }
+      if (!isSafari && bparam.output) {
+        usage |= GPUBufferUsage.COPY_SRC;
+      }
 
-      return device.createBuffer({
+      const buf = device.createBuffer({
+        mappedAtCreation: (!isSafari && bparam.input) ? true : false,
         size: bparam.length * Float32Array.BYTES_PER_ELEMENT,
         usage
       });
+      if (!isSafari && bparam.output) {
+        const dst = device.createBuffer({
+          size: bparam.length * Float32Array.BYTES_PER_ELEMENT,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        chromeOutputCopyInfo.push({ src: buf, dst, size: bparam.length * Float32Array.BYTES_PER_ELEMENT, name: bparam.name });
+      }
+      return buf;
     });
-    const bindGroup = device.createBindGroup({
+    const bindGroup = isSafari ? device.createBindGroup({
       layout: request.pipeline.bindGroupLayout,
       bindings: request.buffers.map((bparam, i) => ({
+        binding: i,
+        resource: {
+          buffer: buffers[i],
+          size: bparam.length * Float32Array.BYTES_PER_ELEMENT
+        }
+      }))
+    }): device.createBindGroup({
+      layout: request.pipeline.bindGroupLayout,
+      entries: request.buffers.map((bparam, i) => ({
         binding: i,
         resource: {
           buffer: buffers[i],
@@ -137,19 +169,35 @@ class WebGPURunner {
 
       if (bparam.input) {
         const buffer = buffers[i];
-        const buffer_ab = await buffer.mapWriteAsync();
-        const buffer_mapped_array = new Float32Array(buffer_ab);
-        const input_array = request.inputData[bparam.name];
-        if (!input_array) {
-          console.error(`input array '${bparam.name}' is not supplied.`);
-          continue;
+        if (isSafari) {
+          const buffer_ab = await buffer.mapWriteAsync();
+          const buffer_mapped_array = new Float32Array(buffer_ab);
+          const input_array = request.inputData[bparam.name];
+          if (!input_array) {
+            console.error(`input array '${bparam.name}' is not supplied.`);
+            continue;
+          }
+          if (input_array.length !== buffer_mapped_array.length) {
+            console.error(`length of input array '${bparam.name}' does not match GPU buffer (${input_array.length} !== ${buffer_mapped_array.length}).`);
+            continue;
+          }
+          buffer_mapped_array.set(input_array);
+          buffer.unmap();
+        } else {
+          const buffer_ab = buffer.getMappedRange();
+          const buffer_mapped_array = new Float32Array(buffer_ab);
+          const input_array = request.inputData[bparam.name];
+          if (!input_array) {
+            console.error(`input array '${bparam.name}' is not supplied.`);
+            continue;
+          }
+          if (input_array.length !== buffer_mapped_array.length) {
+            console.error(`length of input array '${bparam.name}' does not match GPU buffer (${input_array.length} !== ${buffer_mapped_array.length}).`);
+            continue;
+          }
+          buffer_mapped_array.set(input_array);
+          buffer.unmap();
         }
-        if (input_array.length !== buffer_mapped_array.length) {
-          console.error(`length of input array '${bparam.name}' does not match GPU buffer (${input_array.length} !== ${buffer_mapped_array.length}).`);
-          continue;
-        }
-        buffer_mapped_array.set(input_array);
-        buffer.unmap();
       }
     }
 
@@ -164,25 +212,48 @@ class WebGPURunner {
     );
     passEncoder.endPass();
 
-    device.getQueue().submit([commandEncoder.finish()]);
-
-    const outputs: { [key: string]: Float32Array } = {};
-    for (let i = 0; i < request.buffers.length; i++) {
-      const bparam = request.buffers[i];
-
-      if (bparam.output) {
-        const buffer = buffers[i];
-        const buffer_ab = await buffer.mapReadAsync();
-        const buffer_mapped_array = new Float32Array(buffer_ab);
-        const result_array = new Float32Array(buffer_mapped_array);
-        buffer.unmap();
-        outputs[bparam.name] = result_array;
-      }
+    for (const chromeCopy of chromeOutputCopyInfo) {
+      commandEncoder.copyBufferToBuffer(chromeCopy.src, 0, chromeCopy.dst, 0, chromeCopy.size);
     }
 
-    for (let i = 0; i < request.buffers.length; i++) {
-      const buffer = buffers[i];
-      buffer.destroy();
+    if (isSafari) {
+      device.getQueue().submit([commandEncoder.finish()]);
+    } else {
+      device.defaultQueue.submit([commandEncoder.finish()]);
+    }
+
+    const outputs: { [key: string]: Float32Array } = {};
+    if (isSafari) {
+      for (let i = 0; i < request.buffers.length; i++) {
+        const bparam = request.buffers[i];
+  
+        if (bparam.output) {
+          const buffer = buffers[i];
+          const buffer_ab = await buffer.mapReadAsync();
+          const buffer_mapped_array = new Float32Array(buffer_ab);
+          const result_array = new Float32Array(buffer_mapped_array);
+          buffer.unmap();
+          outputs[bparam.name] = result_array;
+        }
+      }
+  
+      for (let i = 0; i < request.buffers.length; i++) {
+        const buffer = buffers[i];
+        buffer.destroy();
+      }
+    } else {
+      for (const chromeCopy of chromeOutputCopyInfo) {
+        await chromeCopy.dst.mapAsync(GPUMapMode.READ);
+        const arrayBuffer = chromeCopy.dst.getMappedRange();
+        const buffer_mapped_array = new Float32Array(arrayBuffer);
+        const result_array = new Float32Array(buffer_mapped_array);
+        chromeCopy.dst.unmap();
+        chromeCopy.dst.destroy();
+        outputs[chromeCopy.name] = result_array;
+      }
+      for (const buffer of buffers) {
+        buffer.destroy();
+      }
     }
 
     const result: WebGPURunnerResult = {
@@ -299,7 +370,7 @@ compute void main(constant float4[] array_a : register(u0),
 }
 
 async function sgemm_generic(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array): Promise<Float32Array> {
-  const shader = `
+  const shader = isSafari ? `
 [numthreads(8, 8, 1)]
 compute void main(constant float[] array_a : register(u0),
                   constant float[] array_b : register(u1),
@@ -321,7 +392,7 @@ compute void main(constant float[] array_a : register(u0),
   float alpha = meta[3];
     array_c[x + y * N] = sum * alpha;
 }
-`;
+` : ShaderSgemmGeneric;
 
   const cache_key = 'sgemm_generic';
   let pipeline = runner.pipelineCache.get(cache_key);
@@ -339,7 +410,7 @@ compute void main(constant float[] array_a : register(u0),
       { index: 3, name: 'meta', length: 4, input: true, output: false },
     ],
     inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, alpha]) },
-    threadGroups: { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 }
+    threadGroups: isSafari ? { x: Math.ceil(n / 8), y: Math.ceil(m / 8), z: 1 } : { x: n, y: m, z: 1 }
   };
 
   const result = await runner.run(request);
