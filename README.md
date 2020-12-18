@@ -1,8 +1,16 @@
-# WebGPU-BLAS
+# WebGPU-BLAS (alpha version)
 
 Fast matrix-matrix multiplication on web browser using [WebGPU](https://gpuweb.github.io/gpuweb/), future web standard.
 
 The WebGPU standard is still in the process of being established and will not work in normal web browsers. There is also a possibility that the code will not work due to changes in the standard.
+
+# Benchmark
+
+Performance comparison of WebGPU and WebGL in terms of matrix-matrix multiplication in different hardwares and browsers. WebGL is the standard API as of 2020 for accessing the GPU.
+
+![WebGPU-BLAS benchmark](docs/images/benchmark.png)
+
+When using the WebGPU on Windows, 376 GFLOPS was achieved with a matrix size of 4096. This speed is 2.4 times faster than the speed of 156 GFLOPS when using WebGL.
 
 # Supported web browsers
 
