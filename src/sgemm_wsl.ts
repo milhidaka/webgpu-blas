@@ -1,3 +1,6 @@
+// sgemm for Safari + WSL (iOS / MacOS)
+// WSL is deprecated and has many different parameters from Chrome's WebGPU, so separated.
+
 let polyfillgpu_called = false;
 
 function polyfillgpu() {
@@ -74,7 +77,7 @@ class WebGPURunner {
     this._initialized = true;
   }
 
-  createPipeline(shader: string, nBuffers: number): WebGPURunnerPipeline {
+  createPipeline(shader: string | Uint32Array, nBuffers: number): WebGPURunnerPipeline {
     const device = this._device;
     const bindings = [];
     for (let i = 0; i < nBuffers; i++) {
@@ -116,10 +119,11 @@ class WebGPURunner {
         usage |= GPUBufferUsage.MAP_READ;
       }
 
-      return device.createBuffer({
+      const buf = device.createBuffer({
         size: bparam.length * Float32Array.BYTES_PER_ELEMENT,
         usage
       });
+      return buf;
     });
     const bindGroup = device.createBindGroup({
       layout: request.pipeline.bindGroupLayout,
@@ -207,6 +211,7 @@ compute void main(constant float4[] array_a : register(u0),
   // threadgroups x: N / numthread.x / 8, y: M / numthread.y / 4
   uint M = uint(meta[0]), N = uint(meta[1]), K = uint(meta[2]);
   uint MD4 = uint(meta[3]), ND4 = uint(meta[4]), KD4 = uint(meta[5]);
+  float alpha = meta[6];
   uint x = uint(dispatchThreadID.x);
   uint y = uint(dispatchThreadID.y);
   float4 sum0 = float4(0.0,0.0,0.0,0.0);
@@ -264,14 +269,14 @@ compute void main(constant float4[] array_a : register(u0),
     sum12 = mad(float4(arow2.w,arow2.w,arow2.w,arow2.w), brow, sum12);
     sum13 = mad(float4(arow3.w,arow3.w,arow3.w,arow3.w), brow, sum13);
   }
-    array_c[x * 2 + 0 + (y * 4 + 0) * ND4] = sum0;
-    array_c[x * 2 + 0 + (y * 4 + 1) * ND4] = sum1;
-    array_c[x * 2 + 0 + (y * 4 + 2) * ND4] = sum2;
-    array_c[x * 2 + 0 + (y * 4 + 3) * ND4] = sum3;
-    array_c[x * 2 + 1 + (y * 4 + 0) * ND4] = sum10;
-    array_c[x * 2 + 1 + (y * 4 + 1) * ND4] = sum11;
-    array_c[x * 2 + 1 + (y * 4 + 2) * ND4] = sum12;
-    array_c[x * 2 + 1 + (y * 4 + 3) * ND4] = sum13;
+    array_c[x * 2 + 0 + (y * 4 + 0) * ND4] = sum0 * alpha;
+    array_c[x * 2 + 0 + (y * 4 + 1) * ND4] = sum1 * alpha;
+    array_c[x * 2 + 0 + (y * 4 + 2) * ND4] = sum2 * alpha;
+    array_c[x * 2 + 0 + (y * 4 + 3) * ND4] = sum3 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 0) * ND4] = sum10 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 1) * ND4] = sum11 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 2) * ND4] = sum12 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 3) * ND4] = sum13 * alpha;
 }
 `;
 
@@ -288,9 +293,9 @@ compute void main(constant float4[] array_a : register(u0),
       { index: 0, name: 'array_a', length: m * k, input: true, output: false },
       { index: 1, name: 'array_b', length: k * n, input: true, output: false },
       { index: 2, name: 'array_c', length: m * n, input: false, output: true },
-      { index: 3, name: 'meta', length: 6, input: true, output: false },
+      { index: 3, name: 'meta', length: 7, input: true, output: false },
     ],
-    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4]) },
+    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4, alpha]) },
     threadGroups: { x: n / 64, y: m / 32, z: 1 }
   };
 
@@ -346,22 +351,6 @@ compute void main(constant float[] array_a : register(u0),
   return result.outputData.array_c;
 }
 
-
-function sgemm_fallback(m: number, n: number, k: number, alpha: number, array_a: Float32Array, array_b: Float32Array): Float32Array {
-  // To improve performance on WebGPU unsupported devices, use WebGL or WebAssembly
-  const result = new Float32Array(m * n);
-  for (let row = 0; row < m; row++) {
-    for (let col = 0; col < n; col++) {
-      let sum = 0.0;
-      for (let j = 0; j < k; j++) {
-        sum += array_a[row * k + j] * array_b[j * n + col];
-      }
-      result[row * n + col] = sum * alpha;
-    }
-  }
-  return result;
-}
-
 export async function sgemm(m: number, n: number, k: number, alpha: number, a: Float32Array, b: Float32Array, beta: number = 0.0, c?: Float32Array): Promise<Float32Array> {
   if (beta !== 0.0) {
     throw new Error('beta !== 0.0 is not yet supported');
@@ -370,10 +359,10 @@ export async function sgemm(m: number, n: number, k: number, alpha: number, a: F
   await runner.init();
   if (!runner.isSupportedDevice) {
     // do fallback
-    return sgemm_fallback(n, n, k, alpha, a, b);
+    throw new Error('unsupported device');
   }
 
-  if (m % 64 === 0 && n % 32 === 0 && k % 4 === 0 && alpha === 1.0) {
+  if (m % 32 === 0 && n % 64 === 0 && k % 4 === 0 && alpha === 1.0) {
     return sgemm_block(m, n, k, alpha, a, b);
   } else {
     return sgemm_generic(m, n, k, alpha, a, b);
