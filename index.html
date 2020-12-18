@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>WebGPU-BLAS Example</title>
+  <script src="main.js"></script>
+</head>
+
+<body>
+  <h1>WebGPU-BLAS Example</h1>
+  <p>This example computes matrix-matrix multiplication (sgemm) using <a
+      href="https://gpuweb.github.io/gpuweb/">WebGPU</a>, future web standard.</p>
+  <p style="color: red;">As of 2020, you need a beta version web browser, such as <a
+      href="https://www.google.com/chrome/canary/">Chrome Canary</a>, and enable webgpu feature flag (open
+    chrome://flags/#enable-unsafe-webgpu ).</p>
+  <p>WebGPU of this browser: <span id="is_webgpu_enabled" style="color: red;"></span></p>
+  <p>Created by @milhidaka <a href="https://github.com/milhidaka/webgpu-blas">Github</a></p>
+  <p><a href="weblas_benchmark.html">weblas benchmark</a></p>
+
+  <div>
+    <h2>Small example</h2>
+    <p>Computes</p>
+    <pre>[1,2
+ 3,4]
+×
+[5,6
+ 7,8]</pre>
+    <button type="button" id="small_example">Compute</button>
+    <pre id="small_example_result"></pre>
+  </div>
+  <div>
+    <h2>Test</h2>
+    <p>Compares computation result of WebGPU and pure JavaScript implementation.</p>
+    <textarea id="test_shapes" cols="20" rows="10">1,1,1
+32,32,32
+10,20,30
+32,64,4
+32,33,34
+64,64,64
+65,67,69</textarea>
+    <button type="button" id="run_test">Run</button>
+    <pre id="test_message"></pre>
+  </div>
+  <div>
+    <h2>Benchmark</h2>
+    <p>Note: when m % 32 === 0 && n % 64 === 0 && k % 4 === 0, efficient kernel is used.</p>
+    M,N,K tuples:<br />
+    <textarea id="benchmark_shapes" cols="20" rows="10">32,32,32
+64,64,64
+128,128,128
+256,256,256
+512,512,512
+1024,1024,1024
+2048,2048,2048</textarea>
+    <button type="button" id="run_benchmark">Benchmark</button>
+    <pre id="bench_message"></pre>
+  </div>
+</body>
+
+</html>

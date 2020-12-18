@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>weblas benchmark</title>
+    <script src="weblas/weblas.js"></script>
+    <script src="weblas_benchmark.js"></script>
+</head>
+<body>
+    <h1>weblas benchmark</h1>
+    <p><a href="https://github.com/waylonflinn/weblas">weblas</a> is a library for matrix-matrix multiplication, using WebGL to access to GPU.</p>
+    <div>
+      M,N,K tuples:<br />
+      <textarea id="benchmark_shapes" cols="20" rows="10">32,32,32
+64,64,64
+128,128,128
+256,256,256
+512,512,512
+1024,1024,1024
+2048,2048,2048</textarea>
+      <button type="button" id="run_benchmark">Benchmark</button>
+      <pre id="bench_message"></pre>
+    </div>
+</body>
+</html>
