@@ -79,3 +79,9 @@ For shader for Chrome, SPIR-V binary format is needed.
 SPRI-V can be compiled from text-based GLSL shader. To compile, use helper interface in `compile` directory.
 
 GLSL shader is stored in `shader` directory. For example, `shader/sgemm_block.glsl` is compiled and stored in `src/shader_sgemm_block.ts`.
+
+# License
+
+MIT
+
+`examples/sgemm/dist/weblas`: weblas by @waylonflinn
