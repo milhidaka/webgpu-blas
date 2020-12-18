@@ -21,6 +21,7 @@ layout(std430, set = 0, binding = 3) readonly buffer arrayMeta {
 void main() {
   uint M = uint(meta.numbers[0]), N = uint(meta.numbers[1]), K = uint(meta.numbers[2]);
   uint MD4 = uint(meta.numbers[3]), ND4 = uint(meta.numbers[4]), KD4 = uint(meta.numbers[5]);
+  float alpha = meta.numbers[6];
   uint x = uint(gl_GlobalInvocationID.x);
   uint y = uint(gl_GlobalInvocationID.y);
 
@@ -79,12 +80,12 @@ void main() {
     sum12 = (vec4(arow2.w,arow2.w,arow2.w,arow2.w) * brow + sum12);
     sum13 = (vec4(arow3.w,arow3.w,arow3.w,arow3.w) * brow + sum13);
   }
-    array_c.numbers[x * 2 + 0 + (y * 4 + 0) * ND4] = sum0;
-    array_c.numbers[x * 2 + 0 + (y * 4 + 1) * ND4] = sum1;
-    array_c.numbers[x * 2 + 0 + (y * 4 + 2) * ND4] = sum2;
-    array_c.numbers[x * 2 + 0 + (y * 4 + 3) * ND4] = sum3;
-    array_c.numbers[x * 2 + 1 + (y * 4 + 0) * ND4] = sum10;
-    array_c.numbers[x * 2 + 1 + (y * 4 + 1) * ND4] = sum11;
-    array_c.numbers[x * 2 + 1 + (y * 4 + 2) * ND4] = sum12;
-    array_c.numbers[x * 2 + 1 + (y * 4 + 3) * ND4] = sum13;
+    array_c.numbers[x * 2 + 0 + (y * 4 + 0) * ND4] = sum0 * alpha;
+    array_c.numbers[x * 2 + 0 + (y * 4 + 1) * ND4] = sum1 * alpha;
+    array_c.numbers[x * 2 + 0 + (y * 4 + 2) * ND4] = sum2 * alpha;
+    array_c.numbers[x * 2 + 0 + (y * 4 + 3) * ND4] = sum3 * alpha;
+    array_c.numbers[x * 2 + 1 + (y * 4 + 0) * ND4] = sum10 * alpha;
+    array_c.numbers[x * 2 + 1 + (y * 4 + 1) * ND4] = sum11 * alpha;
+    array_c.numbers[x * 2 + 1 + (y * 4 + 2) * ND4] = sum12 * alpha;
+    array_c.numbers[x * 2 + 1 + (y * 4 + 3) * ND4] = sum13 * alpha;
 }

@@ -207,9 +207,9 @@ async function sgemm_block(m: number, n: number, k: number, alpha: number, a: Fl
       { index: 0, name: 'array_a', length: m * k, input: true, output: false },
       { index: 1, name: 'array_b', length: k * n, input: true, output: false },
       { index: 2, name: 'array_c', length: m * n, input: false, output: true },
-      { index: 3, name: 'meta', length: 6, input: true, output: false },
+      { index: 3, name: 'meta', length: 7, input: true, output: false },
     ],
-    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4]) },
+    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4, alpha]) },
     threadGroups: { x: n / 64, y: m / 32, z: 1 }
   };
 

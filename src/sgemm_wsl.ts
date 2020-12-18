@@ -212,6 +212,7 @@ compute void main(constant float4[] array_a : register(u0),
   // threadgroups x: N / numthread.x / 8, y: M / numthread.y / 4
   uint M = uint(meta[0]), N = uint(meta[1]), K = uint(meta[2]);
   uint MD4 = uint(meta[3]), ND4 = uint(meta[4]), KD4 = uint(meta[5]);
+  float alpha = meta[6];
   uint x = uint(dispatchThreadID.x);
   uint y = uint(dispatchThreadID.y);
   float4 sum0 = float4(0.0,0.0,0.0,0.0);
@@ -269,14 +270,14 @@ compute void main(constant float4[] array_a : register(u0),
     sum12 = mad(float4(arow2.w,arow2.w,arow2.w,arow2.w), brow, sum12);
     sum13 = mad(float4(arow3.w,arow3.w,arow3.w,arow3.w), brow, sum13);
   }
-    array_c[x * 2 + 0 + (y * 4 + 0) * ND4] = sum0;
-    array_c[x * 2 + 0 + (y * 4 + 1) * ND4] = sum1;
-    array_c[x * 2 + 0 + (y * 4 + 2) * ND4] = sum2;
-    array_c[x * 2 + 0 + (y * 4 + 3) * ND4] = sum3;
-    array_c[x * 2 + 1 + (y * 4 + 0) * ND4] = sum10;
-    array_c[x * 2 + 1 + (y * 4 + 1) * ND4] = sum11;
-    array_c[x * 2 + 1 + (y * 4 + 2) * ND4] = sum12;
-    array_c[x * 2 + 1 + (y * 4 + 3) * ND4] = sum13;
+    array_c[x * 2 + 0 + (y * 4 + 0) * ND4] = sum0 * alpha;
+    array_c[x * 2 + 0 + (y * 4 + 1) * ND4] = sum1 * alpha;
+    array_c[x * 2 + 0 + (y * 4 + 2) * ND4] = sum2 * alpha;
+    array_c[x * 2 + 0 + (y * 4 + 3) * ND4] = sum3 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 0) * ND4] = sum10 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 1) * ND4] = sum11 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 2) * ND4] = sum12 * alpha;
+    array_c[x * 2 + 1 + (y * 4 + 3) * ND4] = sum13 * alpha;
 }
 `;
 
@@ -293,9 +294,9 @@ compute void main(constant float4[] array_a : register(u0),
       { index: 0, name: 'array_a', length: m * k, input: true, output: false },
       { index: 1, name: 'array_b', length: k * n, input: true, output: false },
       { index: 2, name: 'array_c', length: m * n, input: false, output: true },
-      { index: 3, name: 'meta', length: 6, input: true, output: false },
+      { index: 3, name: 'meta', length: 7, input: true, output: false },
     ],
-    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4]) },
+    inputData: { array_a: a, array_b: b, meta: new Float32Array([m, n, k, m / 4, n / 4, k / 4, alpha]) },
     threadGroups: { x: n / 64, y: m / 32, z: 1 }
   };
 
