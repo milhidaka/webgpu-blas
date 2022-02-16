@@ -21,4 +21,4 @@ yarn build
 npx http-server
 ```
 
-Open [http://localhost:8080/](http://localhost:8080/) with Safari (with WebGPU enabled)
+Open [http://localhost:8080/](http://localhost:8080/) with Chrome Canary (with WebGPU enabled)

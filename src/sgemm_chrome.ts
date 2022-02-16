@@ -53,10 +53,13 @@ class WebGPURunner {
     polyfillgpu();
     try {
       const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        throw new Error("requestAdapter failed");
+      }
       this._device = await adapter.requestDevice();
       this.isSupportedDevice = true;
     } catch (ex) {
-      console.error('Unsupported device: ', ex.message);
+      console.error('Unsupported device: ', (ex as Error).message);
     }
     this._initialized = true;
   }
@@ -68,7 +71,7 @@ class WebGPURunner {
       bindings.push({
         binding: i,
         visibility: GPUShaderStage.COMPUTE,
-        type: "storage-buffer"
+        buffer: { type: "storage" },
       });
     }
     const bindGroupLayout = device.createBindGroupLayout({
@@ -80,7 +83,7 @@ class WebGPURunner {
     const shaderModule = device.createShaderModule({ code: shader });
     const pipeline = device.createComputePipeline({
       layout: pipelineLayout,
-      computeStage: {
+      compute: {
         module: shaderModule,
         entryPoint: "main"
       }
@@ -156,13 +159,13 @@ class WebGPURunner {
       request.threadGroups.y,
       request.threadGroups.z
     );
-    passEncoder.endPass();
+    passEncoder.end();
 
     for (const chromeCopy of chromeOutputCopyInfo) {
       commandEncoder.copyBufferToBuffer(chromeCopy.src, 0, chromeCopy.dst, 0, chromeCopy.size);
     }
 
-    device.defaultQueue.submit([commandEncoder.finish()]);
+    device.queue.submit([commandEncoder.finish()]);
 
     const outputs: { [key: string]: Float32Array } = {};
     for (const chromeCopy of chromeOutputCopyInfo) {

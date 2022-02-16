@@ -12,7 +12,8 @@
     "lib": [
       "es2019",
       "dom"
-    ]
+    ],
+    "typeRoots": ["./node_modules/@webgpu/types", "./node_modules/@types"]
   },
   "include": [
     "src"
