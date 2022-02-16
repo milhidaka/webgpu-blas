@@ -6,7 +6,7 @@ The WebGPU standard is still in the process of being established and will not wo
 
 # Benchmark
 
-Performance comparison of WebGPU and WebGL in terms of matrix-matrix multiplication in different hardwares and browsers. WebGL is the standard API as of 2020 for accessing the GPU.
+Performance comparison of WebGPU and WebGL in terms of matrix-matrix multiplication in different hardwares and browsers. WebGL is the standard API as of 2020 for accessing the GPU. (As of February 2022, WebGPU on Safari does not work. Updating of this figure is needed.)
 
 ![WebGPU-BLAS benchmark](docs/images/benchmark.png)
 
@@ -19,20 +19,7 @@ When using the WebGPU on Windows, 376 GFLOPS was achieved with a matrix size of 
 
 ![Chrome Canary WebGPU](docs/images/chrome-canary-webgpu.png)
 
-- Safari 14 on macOS Catalina, iOS 13, iOS 14
-  - See below to enable the experimental feature
-  - Using WSL shading language, which is deprecated and will be removed in future release of Safari.
-
-In macOS, menu bar -> Develop -> Experimental Features -> check "WebGPU"
-
-In iOS 13, open Settings -> Safari -> Advanced -> Experimental Features -> Toggle "WebGPU"
-
-<p float="left">
-<img src="docs/images/ios-safari-webgpu-1.png" title="iOS13 enable WebGPU Step1" width="200px">
-<img src="docs/images/ios-safari-webgpu-2.png" title="iOS13 enable WebGPU Step2" width="200px">
-<img src="docs/images/ios-safari-webgpu-3.png" title="iOS13 enable WebGPU Step3" width="200px">
-<img src="docs/images/ios-safari-webgpu-4.png" title="iOS13 enable WebGPU Step4" width="200px">
-</p>
+As of February 2022, WebGPU is not available in Safari. Experimental WebGPU implementation on iOS 13 was removed in iOS 15. [Older version for iOS 13](https://github.com/milhidaka/webgpu-blas/tree/7781151dce8569f67ac0282cf0b3e1ace80e2ca9)
 
 # Usage
 
