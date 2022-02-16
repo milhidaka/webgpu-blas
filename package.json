@@ -1,6 +1,6 @@
 {
   "name": "webgpu-blas",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Matrix operation on WebGPU",
   "main": "dist/index.js",
   "files": [
