@@ -60,7 +60,5 @@ typings/
 # next.js build output
 .next
 
-/compile
 /docs
 /examples
-/shader
