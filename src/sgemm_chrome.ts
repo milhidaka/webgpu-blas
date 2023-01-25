@@ -159,7 +159,13 @@ class WebGPURunner {
       request.threadGroups.y,
       request.threadGroups.z
     );
-    passEncoder.end();
+    if (passEncoder.end) {
+      passEncoder.end();
+    } else {
+      // deprecated
+      // Firefox Nightly 111 has this
+      (passEncoder as any).endPass();
+    }
 
     for (const chromeCopy of chromeOutputCopyInfo) {
       commandEncoder.copyBufferToBuffer(chromeCopy.src, 0, chromeCopy.dst, 0, chromeCopy.size);
