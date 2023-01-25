@@ -2,18 +2,16 @@
 
 # setup
 ```
-yarn
-```
-
-Run the following when `webgpu-blas` library is updated
-
-```
-yarn add ../..
+npm install
+cd ../..
+npm link
+cd examples/sgemm
+npm link webgpu-blas
 ```
 
 # build
 ```
-yarn build
+npm run build
 ```
 
 # run

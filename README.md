@@ -52,19 +52,19 @@ console.log(result); // m*n row-major matrix (Float32Array)
 
 ## Setup
 ```
-yarn
+npm install
 ```
 
 ## Build
 
 For npm package
 ```
-yarn build
+npm run build
 ```
 
 For webpack single js
 ```
-yarn webpack
+npm run webpack
 ```
 
 # License
