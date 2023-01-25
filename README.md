@@ -14,7 +14,7 @@ When using the WebGPU on Windows, 376 GFLOPS was achieved with a matrix size of 
 
 # Supported web browsers
 
-- [Chrome Canary](https://www.google.com/chrome/canary/) (100.0.4892.0) on Windows, MacOS (maybe Linux)
+- [Chrome Canary](https://www.google.com/chrome/canary/) (111.0.5557.0) on Windows, MacOS (maybe Linux)
   - Enabling WebGPU feature flag (from chrome://flags/#enable-unsafe-webgpu ) is needed.
 
 ![Chrome Canary WebGPU](docs/images/chrome-canary-webgpu.png)

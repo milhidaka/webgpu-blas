@@ -38,7 +38,7 @@ interface WebGPURunnerResult {
 
 class WebGPURunner {
   private _initialized = false;
-  private _device: any;
+  private _device!: GPUDevice;
   isSupportedDevice: boolean;
   pipelineCache: Map<string, WebGPURunnerPipeline>;
   constructor() {
@@ -64,14 +64,14 @@ class WebGPURunner {
     this._initialized = true;
   }
 
-  createPipeline(shader: string | Uint32Array, nBuffers: number): WebGPURunnerPipeline {
+  createPipeline(shader: string, bindingTypes: GPUBufferBindingType[]): WebGPURunnerPipeline {
     const device = this._device;
-    const bindings = [];
-    for (let i = 0; i < nBuffers; i++) {
+    const bindings: GPUBindGroupLayoutEntry[] = [];
+    for (let i = 0; i < bindingTypes.length; i++) {
       bindings.push({
         binding: i,
         visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "storage" },
+        buffer: { type: bindingTypes[i] },
       });
     }
     const bindGroupLayout = device.createBindGroupLayout({
@@ -154,18 +154,12 @@ class WebGPURunner {
     const passEncoder = commandEncoder.beginComputePass();
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setPipeline(request.pipeline.pipeline);
-    passEncoder.dispatch(
+    passEncoder.dispatchWorkgroups(
       request.threadGroups.x,
       request.threadGroups.y,
       request.threadGroups.z
     );
-    if (passEncoder.end) {
-      passEncoder.end();
-    } else {
-      // deprecated
-      // Chrome 98 only has this
-      passEncoder.endPass();
-    }
+    passEncoder.end();
 
     for (const chromeCopy of chromeOutputCopyInfo) {
       commandEncoder.copyBufferToBuffer(chromeCopy.src, 0, chromeCopy.dst, 0, chromeCopy.size);
@@ -204,7 +198,7 @@ async function sgemm_block(m: number, n: number, k: number, alpha: number, a: Fl
   const cache_key = 'sgemm_block';
   let pipeline = runner.pipelineCache.get(cache_key);
   if (!pipeline) {
-    pipeline = runner.createPipeline(shader, 4);
+    pipeline = runner.createPipeline(shader, ['read-only-storage', 'read-only-storage', 'storage', 'read-only-storage']);
     runner.pipelineCache.set(cache_key, pipeline);
   }
 
@@ -230,7 +224,7 @@ async function sgemm_generic(m: number, n: number, k: number, alpha: number, a: 
   const cache_key = 'sgemm_generic';
   let pipeline = runner.pipelineCache.get(cache_key);
   if (!pipeline) {
-    pipeline = runner.createPipeline(shader, 4);
+    pipeline = runner.createPipeline(shader, ['read-only-storage', 'read-only-storage', 'storage', 'read-only-storage']);
     runner.pipelineCache.set(cache_key, pipeline);
   }
 
