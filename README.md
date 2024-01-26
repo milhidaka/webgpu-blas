@@ -14,12 +14,9 @@ When using the WebGPU on Windows, 376 GFLOPS was achieved with a matrix size of 
 
 # Supported web browsers
 
-- [Chrome Canary](https://www.google.com/chrome/canary/) (111.0.5557.0) on Windows, MacOS (maybe Linux)
-  - Enabling WebGPU feature flag (from chrome://flags/#enable-unsafe-webgpu ) is needed.
+- Chrome (120) on Windows, MacOS
 
-![Chrome Canary WebGPU](docs/images/chrome-canary-webgpu.png)
-
-As of February 2022, WebGPU is not available in Safari. Experimental WebGPU implementation on iOS 13 was removed in iOS 15. [Older version for iOS 13](https://github.com/milhidaka/webgpu-blas/tree/7781151dce8569f67ac0282cf0b3e1ace80e2ca9)
+As of January 2024, WebGPU is not available in Safari. Experimental WebGPU implementation on iOS 13 was removed in iOS 15. [Older version for iOS 13](https://github.com/milhidaka/webgpu-blas/tree/7781151dce8569f67ac0282cf0b3e1ace80e2ca9)
 
 # Usage
 

@@ -19,4 +19,4 @@ npm run build
 npx http-server
 ```
 
-Open [http://localhost:8080/](http://localhost:8080/) with Chrome Canary (with WebGPU enabled)
+Open [http://localhost:8080/](http://localhost:8080/) with Chrome (currently, Windows and MacOS are OK)
