@@ -1,4 +1,18 @@
-import { sgemm } from "webgpu-blas";
+import { sgemm, getWebGPUError } from "webgpu-blas";
+
+let errorReported = false;
+
+function alertIfError() {
+  if (errorReported) {
+    return;
+  }
+
+  let error = getWebGPUError();
+  if (error) {
+    alert(`WebGPU Error (fallback to pure JavaScript): ${error}`);
+    errorReported = true;
+  }
+}
 
 function message(m: string, target: string): void {
   document.getElementById(target).innerText += m + '\n';
@@ -60,6 +74,7 @@ async function run_benchmark() {
       const array_b = makeRandom(k * n);
       // warmup
       await sgemm(m, n, k, alpha, array_a, array_b);
+      alertIfError();
       let timeSum = 0;
       let retSum = 0;
       for (let i = 0; i < runs; i++) {
@@ -75,6 +90,7 @@ async function run_benchmark() {
       const flops = m * n * k * 2 * 1000 / avgTime / 1000000000;
       message(`Sgemm of (${m}x${k}),(${k}x${n}): average ${avgTime} ms (${runs} runs), ${flops.toFixed(2)} GFLOPS`, messageTarget);
       console.log('sum of result (to avoid optimization)', retSum);
+      alertIfError();
     }
   } catch (ex) {
     alert(ex.message);
@@ -86,6 +102,7 @@ async function small_example() {
     const array_a = new Float32Array([1, 2, 3, 4]);
     const array_b = new Float32Array([5, 6, 7, 8]);
     const result = await sgemm(2, 2, 2, 1, array_a, array_b);
+    alertIfError();
     document.getElementById('small_example_result').innerText = `[${result[0]}, ${result[1]}\n ${result[2]}, ${result[3]}]`;
   } catch (ex) {
     alert(ex.message);
@@ -100,6 +117,7 @@ async function run_test() {
     const array_a = makeRandom(m * k);
     const array_b = makeRandom(k * n);
     const result = await sgemm(m, n, k, alpha, array_a, array_b);
+    alertIfError();
     const validation_result = checkResult(m, n, k, alpha, array_a, array_b, result);
     message(`M=${m}, N=${n}, K=${k}: ${validation_result ? 'OK' : 'Error'}`, messageTarget);
   }

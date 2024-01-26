@@ -1,6 +1,6 @@
 {
   "name": "webgpu-blas",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Matrix operation on WebGPU",
   "main": "dist/index.js",
   "files": [
@@ -18,11 +18,10 @@
   },
   "author": "Masatoshi Hidaka",
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
     "@webgpu/types": "^0.1.13",
     "ts-loader": "^6.2.1",
-    "typescript": "^3.7.3",
+    "typescript": "^5.3.3",
     "webpack": "^4.41.2",
     "webpack-cli": "^3.3.10"
   }
